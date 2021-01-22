@@ -27,6 +27,7 @@ public class StationWeatherData {
     public final Date date;
 
     // ~ Weather data ~
+    public final double temperature; // Temperature in degrees Celsius
     public final double dewPoint; // Dew point in degrees Celsius
     public final double stationAirPressure; // Air pressure at station level in millibar
     public final double seaAirPressure; // Air pressure at sea level in millibar
@@ -48,11 +49,13 @@ public class StationWeatherData {
     /**
      * The constructor, which sets every field in this class.
      */
-    public StationWeatherData(int stationId, Date date, double dewPoint, double stationAirPressure, double seaAirPressure, double visibility,
-                              double windSpeed, double precipitation, double snowHeight, double overcast, int windDirection, boolean hasFrozen,
-                              boolean hasRained, boolean hasSnowed, boolean hasHailed, boolean hasThundered, boolean hasWhirlwinded) {
+    public StationWeatherData(int stationId, Date date, double temperature, double dewPoint, double stationAirPressure,
+                              double seaAirPressure, double visibility, double windSpeed, double precipitation,
+                              double snowHeight, double overcast, int windDirection, boolean hasFrozen, boolean hasRained,
+                              boolean hasSnowed, boolean hasHailed, boolean hasThundered, boolean hasWhirlwinded) {
         this.stationId = stationId;
         this.date = date;
+        this.temperature = temperature;
         this.dewPoint = dewPoint;
         this.stationAirPressure = stationAirPressure;
         this.seaAirPressure = seaAirPressure;
@@ -79,26 +82,27 @@ public class StationWeatherData {
      */
     public void insertInTable(Connection connection, String tableName) throws SQLException {
         // Prepare the statement
-        PreparedStatement stmt = connection.prepareStatement("INSERT INTO `" + tableName + "`(`station_id`, `date`, `dew_point`, `station_air_pressure`, `sea_air_pressure`, `visibility`, `wind_speed`, `precipitation`, `snow_height`, `overcast`, `wind_direction`, `has_frozen`, `has_rained`, `has_snowed`, `has_hailed`, `has_thundered`, `has_whirlwinded`) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
+        PreparedStatement stmt = connection.prepareStatement("INSERT INTO `" + tableName + "`(`station_id`, `date`, `temperature`, `dew_point`, `station_air_pressure`, `sea_air_pressure`, `visibility`, `wind_speed`, `precipitation`, `snow_height`, `overcast`, `wind_direction`, `has_frozen`, `has_rained`, `has_snowed`, `has_hailed`, `has_thundered`, `has_whirlwinded`) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
 
         // Set the values of the statement
         stmt.setInt    (1,  stationId);
         stmt.setInt    (2,  (int) date.toInstant().getEpochSecond());
-        stmt.setDouble (3,  dewPoint);
-        stmt.setDouble (4,  stationAirPressure);
-        stmt.setDouble (5,  seaAirPressure);
-        stmt.setDouble (6,  visibility);
-        stmt.setDouble (7,  windSpeed);
-        stmt.setDouble (8,  precipitation);
-        stmt.setDouble (9,  snowHeight);
-        stmt.setDouble (10, overcast);
-        stmt.setInt    (11, windDirection);
-        stmt.setBoolean(12, hasFrozen);
-        stmt.setBoolean(13, hasRained);
-        stmt.setBoolean(14, hasSnowed);
-        stmt.setBoolean(15, hasHailed);
-        stmt.setBoolean(16, hasThundered);
-        stmt.setBoolean(17, hasWhirlwinded);
+        stmt.setDouble (3,  temperature);
+        stmt.setDouble (4,  dewPoint);
+        stmt.setDouble (5,  stationAirPressure);
+        stmt.setDouble (6,  seaAirPressure);
+        stmt.setDouble (7,  visibility);
+        stmt.setDouble (8,  windSpeed);
+        stmt.setDouble (9,  precipitation);
+        stmt.setDouble (10, snowHeight);
+        stmt.setDouble (11, overcast);
+        stmt.setInt    (12, windDirection);
+        stmt.setBoolean(13, hasFrozen);
+        stmt.setBoolean(14, hasRained);
+        stmt.setBoolean(15, hasSnowed);
+        stmt.setBoolean(16, hasHailed);
+        stmt.setBoolean(17, hasThundered);
+        stmt.setBoolean(18, hasWhirlwinded);
 
         // EXECUTE!
         stmt.executeUpdate();
@@ -140,6 +144,7 @@ public class StationWeatherData {
         Date date = new Date(year - 1900, month - 1, day, hour, minute, second);
 
         // Parse weather data points
+        double temperature = Double.parseDouble(getNode(measurement, "TEMP", "-1"));
         double dewPoint = Double.parseDouble(getNode(measurement, "DEWP", "-1"));
         double stationAirPressure = Double.parseDouble(getNode(measurement, "STP", "-1"));
         double seaAirPressure = Double.parseDouble(getNode(measurement, "SLP", "-1"));
@@ -160,8 +165,9 @@ public class StationWeatherData {
         boolean hasWhirlwinded = events.charAt(5) != '0';
 
         // Return the parsed data
-        return new StationWeatherData(stationId, date, dewPoint, stationAirPressure, seaAirPressure, visibility, windSpeed, precipitation,
-                snowHeight, overcast, windDirection, hasFrozen, hasRained, hasSnowed, hasHailed, hasThundered, hasWhirlwinded);
+        return new StationWeatherData(stationId, date, temperature, dewPoint, stationAirPressure, seaAirPressure,
+                visibility, windSpeed, precipitation, snowHeight, overcast, windDirection, hasFrozen, hasRained,
+                hasSnowed, hasHailed, hasThundered, hasWhirlwinded);
     }
 
     /**
