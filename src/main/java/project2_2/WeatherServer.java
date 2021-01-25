@@ -6,7 +6,6 @@ import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.net.ServerSocket;
 import java.net.Socket;
-import java.sql.*;
 import java.util.*;
 
 /**
@@ -14,7 +13,6 @@ import java.util.*;
  */
 public class WeatherServer {
     private final Properties properties;
-    private final Set<Integer> stationIDs = new HashSet<>();
 
     private ServerSocket server;
     private RealtimeStatistics statistics;
@@ -35,18 +33,12 @@ public class WeatherServer {
      * @throws IOException If the server socket could not be made.
      */
     public void start() throws IOException {
-        // Make sure the stationIDs list is populated
-        System.out.println("Trying to get all station IDs from the database..");
-        stationIDs.clear();
-        stationIDs.addAll(requestStationIDs());
-        System.out.println("There are " + stationIDs.size() + " stations!");
-
         // Create a RealtimeStatistics object
         statistics = new RealtimeStatistics();
         statistics.startStatsThread();
 
         // Create a DataInsertionQueue object
-        dataInsertionQueue = new DataInsertionQueue(properties, statistics, stationIDs);
+        dataInsertionQueue = new DataInsertionQueue(properties, statistics);
         dataInsertionQueue.startThreads();
 
         // Start the server socket!
@@ -56,41 +48,6 @@ public class WeatherServer {
 
         // Call acceptClientsThread() on a different thread, because it is a blocking method.
         new Thread(this::acceptClientsThread).start();
-    }
-
-    /**
-     * Executes a SELECT query to get all station IDs
-     *
-     * @return A list of all station IDs.
-     */
-    private List<Integer> requestStationIDs() {
-        // The list that we will populate and return
-        List<Integer> stationIDs = new ArrayList<>();
-
-        try {
-            // Create a connection to the database
-            Connection con = DriverManager.getConnection(properties.getProperty("db_url"));
-
-            // Execute the SELECT query
-            PreparedStatement stmt = con.prepareStatement("SELECT stn FROM stations");
-            ResultSet result = stmt.executeQuery();
-
-            // Copy all IDs to the stationIDs list
-            while(result.next()) {
-                int id = result.getInt("stn");
-
-                stationIDs.add(id);
-            }
-
-            // Close the connection
-            con.close();
-        }catch(SQLException e) {
-            // Couldn't connect or couldn't execute the query. Bail!
-            e.printStackTrace();
-            System.exit(-1);
-        }
-
-        return stationIDs;
     }
 
     /**
@@ -146,7 +103,7 @@ public class WeatherServer {
                     currentWeatherData = new StringBuilder();
 
                     // Process the data into an object.
-                    List<StationWeatherData> dataList = StationWeatherData.parseListFromXML(weatherData, stationIDs);
+                    List<StationWeatherData> dataList = StationWeatherData.parseListFromXML(weatherData);
                     dataInsertionQueue.onDataReceive(dataList);
 
                     // Update statistics!

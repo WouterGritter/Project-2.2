@@ -14,7 +14,7 @@ public class DataInsertionQueue {
     // Global objects
     private final Properties properties;
     private final RealtimeStatistics statistics;
-    private final Set<Integer> stationIDs;
+    private final Set<Integer> stationIDs = new HashSet<>();
 
     /**
      * This map holds the most up-to-date data of the weather stations.
@@ -32,12 +32,10 @@ public class DataInsertionQueue {
      *
      * @param properties The global {@link Properties} object
      * @param statistics The global {@link RealtimeStatistics} object
-     * @param stationIDs A list of all available station IDs
      */
-    public DataInsertionQueue(Properties properties, RealtimeStatistics statistics, Set<Integer> stationIDs) {
+    public DataInsertionQueue(Properties properties, RealtimeStatistics statistics) {
         this.properties = properties;
         this.statistics = statistics;
-        this.stationIDs = stationIDs;
     }
 
     /**
@@ -61,12 +59,18 @@ public class DataInsertionQueue {
      * @param dataList A list of data the client received.
      */
     public void onDataReceive(Collection<StationWeatherData> dataList) {
+        synchronized(stationIDs) {
+            for(StationWeatherData data : dataList) {
+                // Make sure each ID is in the list
+                // It's a set, so duplicates won't get added.
+                stationIDs.add(data.stationId);
+            }
+        }
+
         synchronized(latestData) {
             for(StationWeatherData data : dataList) {
-                // Add each data point, if it has an allowed station ID
-                if(stationIDs.contains(data.stationId)) {
-                    latestData.put(data.stationId, data);
-                }
+                // Add each data point
+                latestData.put(data.stationId, data);
             }
         }
     }

@@ -116,18 +116,11 @@ public class StationWeatherData {
      * If the allowed IDs list is null or empty, all IDs will be valid.
      *
      * @param measurement The XML data
-     * @param allowedIDs The allowed IDs. NULL or an empty set will allow all IDs
      * @return The parsed StationWeatherData, or NULL if the ID was not allowed
      */
-    public static StationWeatherData parseSingleFromXML(Element measurement, Set<Integer> allowedIDs) {
-        // Parse the ID first
+    public static StationWeatherData parseSingleFromXML(Element measurement) {
+        // Parse the ID
         int stationId = Integer.parseInt(getNode(measurement, "STN", "-1"));
-
-        // Stop if the ID is not allowed
-        if(!(allowedIDs == null || allowedIDs.isEmpty()) &&
-                !allowedIDs.contains(stationId)) {
-            return null;
-        }
 
         // Parse date and time
         String dateStr = getNode(measurement, "DATE", "0000-00-00");
@@ -174,10 +167,9 @@ public class StationWeatherData {
      * Parses a large XML string, which contains multiple measurements.
      *
      * @param xmlData The large XML data
-     * @param allowedIDs See parseSingleFromXML for more information
      * @return A list of all parsed data
      */
-    public static List<StationWeatherData> parseListFromXML(String xmlData, Set<Integer> allowedIDs) {
+    public static List<StationWeatherData> parseListFromXML(String xmlData) {
         List<StationWeatherData> result = new ArrayList<>();
 
         try{
@@ -196,7 +188,7 @@ public class StationWeatherData {
                 try{
                     Element measurement = (Element) measurementList.item(i);
 
-                    StationWeatherData entry = parseSingleFromXML(measurement, allowedIDs);
+                    StationWeatherData entry = parseSingleFromXML(measurement);
                     if(entry != null) {
                         result.add(entry);
                     }
