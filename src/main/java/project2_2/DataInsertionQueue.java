@@ -2,6 +2,7 @@ package project2_2;
 
 import java.sql.Connection;
 import java.sql.DriverManager;
+import java.sql.PreparedStatement;
 import java.sql.SQLException;
 import java.util.*;
 import java.util.concurrent.SynchronousQueue;
@@ -24,7 +25,7 @@ public class DataInsertionQueue {
     /**
      * The synchronous queue for data which should be sent to the database.
      */
-    private final SynchronousQueue<StationWeatherData> insertQueue = new SynchronousQueue<>();
+    private final SynchronousQueue<List<StationWeatherData>> insertQueue = new SynchronousQueue<>();
 
     /**
      * Constructor of {@link DataInsertionQueue}
@@ -87,6 +88,9 @@ public class DataInsertionQueue {
         final int updateIntervalMs = Integer.parseInt(properties.getProperty("station_update_interval_ms"));
         final int updateDivisionMs = updateIntervalMs / Integer.parseInt(properties.getProperty("bulk_update_interval_ms"));
 
+        int insertQueryThreads = Integer.parseInt(properties.getProperty("insert_query_threads"));
+        final int insertsPerQuery = Integer.parseInt(properties.getProperty("inserts_per_query"));
+
         // Keep track of which stage we're at.
         // This timer will loop from 0 to division-1, back to 0 (etc. etc)
         int updateTimer = 0;
@@ -110,7 +114,12 @@ public class DataInsertionQueue {
             }
 
             // Figure out which data needs to be sent!
-            List<StationWeatherData> dataToSend = new ArrayList<>();
+            final int maxPerChunk = Math.min((int) Math.ceil((double) latestData.size() / (double) insertQueryThreads), insertsPerQuery);
+            List<List<StationWeatherData>> dataToSendChunks = new ArrayList<>();
+            dataToSendChunks.add(new ArrayList<>(maxPerChunk));
+
+            int chunkIndex = 0;
+
             synchronized(latestData) {
                 // Get a copy of the keys, because we will be modifying the map as we loop over it
                 List<Integer> latestDataKeys = new ArrayList<>(latestData.keySet());
@@ -122,7 +131,16 @@ public class DataInsertionQueue {
 
                     if(index % updateDivisionMs == updateTimer) {
                         // This data should be sent right now!
-                        dataToSend.add(latestData.get(stationId));
+
+                        List<StationWeatherData> currentChunk = dataToSendChunks.get(chunkIndex);
+                        if(currentChunk.size() >= maxPerChunk) {
+                            chunkIndex++;
+
+                            currentChunk = new ArrayList<>(maxPerChunk);
+                            dataToSendChunks.add(currentChunk);
+                        }
+
+                        currentChunk.add(latestData.get(stationId));
 
                         // To prevent this data from being sent multiple times, remove it from the list
                         latestData.remove(stationId);
@@ -133,9 +151,13 @@ public class DataInsertionQueue {
             // Insert all data that needs to be sent in the insertQueue synchronous queue.
             // When we do this, the multiple processInsertQueue threads will take care of
             // pushing the data to the database.
-            for(StationWeatherData data : dataToSend) {
+            for(List<StationWeatherData> chunk : dataToSendChunks) {
+                if(chunk.isEmpty()) {
+                    continue;
+                }
+
                 try{
-                    insertQueue.put(data);
+                    insertQueue.put(chunk);
                 }catch(InterruptedException e) {
                     e.printStackTrace();
                 }
@@ -160,19 +182,60 @@ public class DataInsertionQueue {
         }
 
         while(true) {
-            StationWeatherData data;
+            List<StationWeatherData> chunk;
             try{
                 // Take data off of the insertQueue queue.
                 // This method is blocking, so we halt code execution until we actually receive some data.
-                data = insertQueue.take();
+                chunk = insertQueue.take();
             }catch(InterruptedException e) {
                 e.printStackTrace();
                 continue;
             }
 
+            if(chunk.isEmpty()) {
+                continue;
+            }
+
             try{
-                // Call the StationWeatherData#insertInTable method, which will execute the INSERT statement.
-                data.insertInTable(con, "data");
+                StringBuilder query = new StringBuilder("INSERT INTO data(station_id,date,temperature,dew_point,station_air_pressure,sea_air_pressure,visibility,wind_speed,precipitation,snow_height,overcast,wind_direction,has_frozen,has_rained,has_snowed,has_hailed,has_thundered,has_whirlwinded)VALUES");
+                for(int i = 0; i < chunk.size(); i++) {
+                    if(i != 0) {
+                        query.append(',');
+                    }
+
+                    query.append("(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)");
+                }
+
+                // Prepare the statement
+                PreparedStatement stmt = con.prepareStatement(query.toString());
+
+                // Set the values of the statement
+                for(int i = 0; i < chunk.size(); i++) {
+                    StationWeatherData data = chunk.get(i);
+
+                    int offset = i * 18;
+                    stmt.setInt    (offset + 1,  data.stationId);
+                    stmt.setInt    (offset + 2,  (int) data.date.toInstant().getEpochSecond());
+                    stmt.setDouble (offset + 3,  data.temperature);
+                    stmt.setDouble (offset + 4,  data.dewPoint);
+                    stmt.setDouble (offset + 5,  data.stationAirPressure);
+                    stmt.setDouble (offset + 6,  data.seaAirPressure);
+                    stmt.setDouble (offset + 7,  data.visibility);
+                    stmt.setDouble (offset + 8,  data.windSpeed);
+                    stmt.setDouble (offset + 9,  data.precipitation);
+                    stmt.setDouble (offset + 10, data.snowHeight);
+                    stmt.setDouble (offset + 11, data.overcast);
+                    stmt.setInt    (offset + 12, data.windDirection);
+                    stmt.setBoolean(offset + 13, data.hasFrozen);
+                    stmt.setBoolean(offset + 14, data.hasRained);
+                    stmt.setBoolean(offset + 15, data.hasSnowed);
+                    stmt.setBoolean(offset + 16, data.hasHailed);
+                    stmt.setBoolean(offset + 17, data.hasThundered);
+                    stmt.setBoolean(offset + 18, data.hasWhirlwinded);
+                }
+
+                // EXECUTE!
+                stmt.executeUpdate();
 
                 // Update statistics!
                 statistics.addSQLQuery();
