@@ -104,11 +104,10 @@ public class DataInsertionQueue {
         // This timer will loop from 0 to division-1, back to 0 (etc. etc)
         int updateTimer = 0;
 
+        long start, sleepMs;
+
         while(true) {
-            // Sleep for the required time
-            try{
-                Thread.sleep(updateIntervalMs / updateDivisionMs);
-            }catch(InterruptedException ignored) {}
+            start = System.currentTimeMillis();
 
             // Update the timer
             updateTimer++;
@@ -177,6 +176,14 @@ public class DataInsertionQueue {
                 }catch(InterruptedException e) {
                     e.printStackTrace();
                 }
+            }
+
+            // Sleep for the required time
+            sleepMs = updateIntervalMs / updateDivisionMs - (System.currentTimeMillis() - start);
+            if(sleepMs > 0) {
+                try{
+                    Thread.sleep(sleepMs);
+                }catch(InterruptedException ignored) {}
             }
         }
     }
