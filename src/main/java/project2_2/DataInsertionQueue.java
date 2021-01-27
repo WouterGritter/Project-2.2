@@ -267,6 +267,7 @@ public class DataInsertionQueue {
 
                 // Update statistics!
                 statistics.addSQLQuery();
+                statistics.addInsertions(chunk.size());
             }catch(SQLException e) {
                 e.printStackTrace();
             }

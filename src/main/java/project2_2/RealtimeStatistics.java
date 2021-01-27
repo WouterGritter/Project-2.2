@@ -11,6 +11,7 @@ public class RealtimeStatistics {
     private final AtomicInteger bulkDataReceivePerSecond = new AtomicInteger(0);
     private final AtomicInteger dataReceivePerSecond = new AtomicInteger(0);
     private final AtomicInteger queriesPerSecond = new AtomicInteger(0);
+    private final AtomicInteger insertsPerSecond = new AtomicInteger(0);
 
     public RealtimeStatistics() {
     }
@@ -55,7 +56,7 @@ public class RealtimeStatistics {
      * @param amount The amount to increase by
      */
     public void addData(int amount) {
-        synchronized (dataReceivePerSecond) {
+        synchronized(dataReceivePerSecond) {
             dataReceivePerSecond.addAndGet(amount);
         }
     }
@@ -66,6 +67,17 @@ public class RealtimeStatistics {
     public void addSQLQuery() {
         synchronized(queriesPerSecond) {
             queriesPerSecond.incrementAndGet();
+        }
+    }
+
+    /**
+     * Increases the insertions amount
+     *
+     * @param amount The amount to increase by
+     */
+    public void addInsertions(int amount) {
+        synchronized(insertsPerSecond) {
+            insertsPerSecond.addAndGet(amount);
         }
     }
 
@@ -100,14 +112,19 @@ public class RealtimeStatistics {
                 queriesPerSecondValue = queriesPerSecond.getAndSet(0);
             }
 
+            int insertsPerSecondValue;
+            synchronized(insertsPerSecond) {
+                insertsPerSecondValue = insertsPerSecond.getAndSet(0);
+            }
+
             // Calculate RAM usage in MB
             double usedRam  = (Runtime.getRuntime().totalMemory() - Runtime.getRuntime().freeMemory()) / 1024.0 / 1024.0;
             double totalRam = Runtime.getRuntime().totalMemory() / 1024.0 / 1024.0;
             double maxRam   = Runtime.getRuntime().maxMemory() / 1024.0 / 1024.0;
 
             // Display all values in the console
-            System.out.printf("clients=%4d, bulk_data=%4d, actual_data=%4d, queries_per_second=%4d, used_ram=%.2fmb, total_ram=%.2fmb, max_ram=%.2fmb%n",
-                    activeConnectionsValue, bulkDataReceivePerSecondValue, dataReceivePerSecondValue, queriesPerSecondValue, usedRam, totalRam, maxRam);
+            System.out.printf("clients=%4d, bulk_data_ps=%4d, actual_data_ps=%5d, queries_ps=%2d, inserts_ps=%5d used_ram=%.2fmb, total_ram=%.2fmb, max_ram=%.2fmb%n",
+                    activeConnectionsValue, bulkDataReceivePerSecondValue, dataReceivePerSecondValue, queriesPerSecondValue, insertsPerSecondValue, usedRam, totalRam, maxRam);
         }
     }
 }
