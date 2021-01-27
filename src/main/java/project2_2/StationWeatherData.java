@@ -8,13 +8,9 @@ import javax.xml.parsers.DocumentBuilder;
 import javax.xml.parsers.DocumentBuilderFactory;
 import java.io.ByteArrayInputStream;
 import java.nio.charset.StandardCharsets;
-import java.sql.Connection;
-import java.sql.PreparedStatement;
-import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
-import java.util.Set;
 
 /**
  * This class represents some data which is sent by a single weather station.
@@ -71,41 +67,6 @@ public class StationWeatherData {
         this.hasHailed = hasHailed;
         this.hasThundered = hasThundered;
         this.hasWhirlwinded = hasWhirlwinded;
-    }
-
-    /**
-     * Inserts the data of this object into the database, using the parameters.
-     *
-     * @param connection The active connection with which to send the data
-     * @param tableName The table name in which to insert the data
-     * @throws SQLException When the data could not be inserted
-     */
-    public void insertInTable(Connection connection, String tableName) throws SQLException {
-        // Prepare the statement
-        PreparedStatement stmt = connection.prepareStatement("INSERT INTO `" + tableName + "`(`station_id`, `date`, `temperature`, `dew_point`, `station_air_pressure`, `sea_air_pressure`, `visibility`, `wind_speed`, `precipitation`, `snow_height`, `overcast`, `wind_direction`, `has_frozen`, `has_rained`, `has_snowed`, `has_hailed`, `has_thundered`, `has_whirlwinded`) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
-
-        // Set the values of the statement
-        stmt.setInt    (1,  stationId);
-        stmt.setInt    (2,  (int) date.toInstant().getEpochSecond());
-        stmt.setDouble (3,  temperature);
-        stmt.setDouble (4,  dewPoint);
-        stmt.setDouble (5,  stationAirPressure);
-        stmt.setDouble (6,  seaAirPressure);
-        stmt.setDouble (7,  visibility);
-        stmt.setDouble (8,  windSpeed);
-        stmt.setDouble (9,  precipitation);
-        stmt.setDouble (10, snowHeight);
-        stmt.setDouble (11, overcast);
-        stmt.setInt    (12, windDirection);
-        stmt.setBoolean(13, hasFrozen);
-        stmt.setBoolean(14, hasRained);
-        stmt.setBoolean(15, hasSnowed);
-        stmt.setBoolean(16, hasHailed);
-        stmt.setBoolean(17, hasThundered);
-        stmt.setBoolean(18, hasWhirlwinded);
-
-        // EXECUTE!
-        stmt.executeUpdate();
     }
 
     /**
