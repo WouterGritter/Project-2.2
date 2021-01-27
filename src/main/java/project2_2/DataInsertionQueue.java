@@ -69,7 +69,12 @@ public class DataInsertionQueue {
 
         synchronized(latestData) {
             for(StationWeatherData data : dataList) {
-                // Add each data point
+                // Add each data point, and update the missing data with data from the previous data
+                StationWeatherData prevData = latestData.get(data.stationId);
+                if(prevData != null) {
+                    data.updateMissingFrom(prevData);
+                }
+
                 latestData.put(data.stationId, data);
             }
         }
@@ -118,37 +123,44 @@ public class DataInsertionQueue {
             }
 
             // Figure out which data needs to be sent!
-            final int maxPerChunk = Math.min((int) Math.ceil((double) latestData.size() / (double) insertQueryThreads), insertsPerQuery);
             List<List<StationWeatherData>> dataToSendChunks = new ArrayList<>();
-            dataToSendChunks.add(new ArrayList<>(maxPerChunk));
+            dataToSendChunks.add(new ArrayList<>(insertsPerQuery));
 
             int chunkIndex = 0;
 
             synchronized(latestData) {
-                // Get a copy of the keys, because we will be modifying the map as we loop over it
-                List<Integer> latestDataKeys = new ArrayList<>(latestData.keySet());
-                for(Integer stationId : latestDataKeys) {
+                for(Integer stationId : latestData.keySet()) {
+                    StationWeatherData data = latestData.get(stationId);
+                    if(!data.isNew) {
+                        continue;
+                    }
+
                     int index = stationIDsList.indexOf(stationId);
-                    if(index == -1) {
-                        index = 0;
+                    if(index == -1) index = 0;
+                    if(index % updateDivisionMs != updateTimer) {
+                        continue;
                     }
 
-                    if(index % updateDivisionMs == updateTimer) {
-                        // This data should be sent right now!
+                    // To prevent this data from being sent multiple times, set the isNew flag to false
+                    // Don't remove it! We use it in onDataReceive to fix broken values with previous data
+                    data.isNew = false;
 
-                        List<StationWeatherData> currentChunk = dataToSendChunks.get(chunkIndex);
-                        if(currentChunk.size() >= maxPerChunk) {
-                            chunkIndex++;
-
-                            currentChunk = new ArrayList<>(maxPerChunk);
-                            dataToSendChunks.add(currentChunk);
-                        }
-
-                        currentChunk.add(latestData.get(stationId));
-
-                        // To prevent this data from being sent multiple times, remove it from the list
-                        latestData.remove(stationId);
+                    if(!data.isComplete()) {
+                        System.out.println("Warning! A datapoint for station " + stationId + " is not complete, so we're not inserting it into the database.");
+                        continue;
                     }
+
+                    // This data should be sent right now!
+
+                    List<StationWeatherData> currentChunk = dataToSendChunks.get(chunkIndex);
+                    if(currentChunk.size() >= insertsPerQuery) {
+                        chunkIndex++;
+
+                        currentChunk = new ArrayList<>(insertsPerQuery);
+                        dataToSendChunks.add(currentChunk);
+                    }
+
+                    currentChunk.add(data);
                 }
             }
 

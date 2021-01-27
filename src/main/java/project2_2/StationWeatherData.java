@@ -43,8 +43,8 @@ public class StationWeatherData {
     public Boolean hasThundered;
     public Boolean hasWhirlwinded;
 
-    // Whether this object has been inserted into the database or not
-    public boolean insertedIntoDatabase;
+    // Whether this datapoint is 'new' or not
+    public boolean isNew = true;
 
     /**
      * The constructor, which sets every field in this class.
