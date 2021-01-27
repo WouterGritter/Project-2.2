@@ -97,17 +97,17 @@ public class DataInsertionQueue {
         final int updateIntervalMs = Integer.parseInt(properties.getProperty("station_update_interval_ms"));
         final int updateDivisionMs = updateIntervalMs / Integer.parseInt(properties.getProperty("bulk_update_interval_ms"));
 
-        int insertQueryThreads = Integer.parseInt(properties.getProperty("insert_query_threads"));
         final int insertsPerQuery = Integer.parseInt(properties.getProperty("inserts_per_query"));
 
         // Keep track of which stage we're at.
-        // This timer will loop from 0 to division-1, back to 0 (etc. etc)
+        // This timer will loop from 0 to division-1, back to 0 (etc. etc.)
         int updateTimer = 0;
 
-        long start, sleepMs;
+        List<Integer> stationIDsList = new ArrayList<>();
+        List<List<StationWeatherData>> dataToSendChunks = new ArrayList<>();
 
         while(true) {
-            start = System.currentTimeMillis();
+            long start = System.currentTimeMillis();
 
             // Update the timer
             updateTimer++;
@@ -115,14 +115,16 @@ public class DataInsertionQueue {
                 updateTimer = 0;
             }
 
-            // Get a copy of the station IDs, which is indexable
-            List<Integer> stationIDsList;
+            // Make sure we have the latest indexable copy of stationIDsList.
+            // We only add to the global stationIDs list, so this checking method is viable.
             synchronized(stationIDs) {
-                stationIDsList = new ArrayList<>(stationIDs);
+                if(stationIDsList.size() < stationIDs.size()) {
+                    stationIDsList.clear();
+                    stationIDsList.addAll(stationIDs);
+                }
             }
 
             // Figure out which data needs to be sent!
-            List<List<StationWeatherData>> dataToSendChunks = new ArrayList<>();
             dataToSendChunks.add(new ArrayList<>(insertsPerQuery));
 
             int chunkIndex = 0;
@@ -178,8 +180,11 @@ public class DataInsertionQueue {
                 }
             }
 
+            // Clean-up
+            dataToSendChunks.clear();
+
             // Sleep for the required time
-            sleepMs = updateIntervalMs / updateDivisionMs - (System.currentTimeMillis() - start);
+            long sleepMs = updateIntervalMs / updateDivisionMs - (System.currentTimeMillis() - start);
             if(sleepMs > 0) {
                 try{
                     Thread.sleep(sleepMs);
