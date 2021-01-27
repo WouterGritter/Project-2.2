@@ -11,6 +11,7 @@ import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
+import java.util.function.Function;
 
 /**
  * This class represents some data which is sent by a single weather station.
@@ -20,35 +21,38 @@ public class StationWeatherData {
     public final int stationId;
 
     // The time at which this event occurred
-    public final int date;
+    public int date;
 
     // ~ Weather data ~
-    public final float temperature; // Temperature in degrees Celsius
-    public final float dewPoint; // Dew point in degrees Celsius
-    public final float stationAirPressure; // Air pressure at station level in millibar
-    public final float seaAirPressure; // Air pressure at sea level in millibar
-    public final float visibility; // Visibility in KM
-    public final float windSpeed; // Wind speed in kilometers per hour
-    public final float precipitation; // Precipitation in centimeters
-    public final float snowHeight; // Show height in centimeters
-    public final float overcast; // Overcast percentage
-    public final short windDirection; // Wind direction in degrees
+    public Float temperature; // Temperature in degrees Celsius
+    public Float dewPoint; // Dew point in degrees Celsius
+    public Float stationAirPressure; // Air pressure at station level in millibar
+    public Float seaAirPressure; // Air pressure at sea level in millibar
+    public Float visibility; // Visibility in KM
+    public Float windSpeed; // Wind speed in kilometers per hour
+    public Float precipitation; // Precipitation in centimeters
+    public Float snowHeight; // Show height in centimeters
+    public Float overcast; // Overcast percentage
+    public Short windDirection; // Wind direction in degrees
 
     // Some flags
-    public final boolean hasFrozen;
-    public final boolean hasRained;
-    public final boolean hasSnowed;
-    public final boolean hasHailed;
-    public final boolean hasThundered;
-    public final boolean hasWhirlwinded;
+    public Boolean hasFrozen;
+    public Boolean hasRained;
+    public Boolean hasSnowed;
+    public Boolean hasHailed;
+    public Boolean hasThundered;
+    public Boolean hasWhirlwinded;
+
+    // Whether this object has been inserted into the database or not
+    public boolean insertedIntoDatabase;
 
     /**
      * The constructor, which sets every field in this class.
      */
-    public StationWeatherData(int stationId, int date, float temperature, float dewPoint, float stationAirPressure,
-                              float seaAirPressure, float visibility, float windSpeed, float precipitation,
-                              float snowHeight, float overcast, short windDirection, boolean hasFrozen, boolean hasRained,
-                              boolean hasSnowed, boolean hasHailed, boolean hasThundered, boolean hasWhirlwinded) {
+    public StationWeatherData(int stationId, int date, Float temperature, Float dewPoint, Float stationAirPressure,
+                              Float seaAirPressure, Float visibility, Float windSpeed, Float precipitation,
+                              Float snowHeight, Float overcast, Short windDirection, Boolean hasFrozen, Boolean hasRained,
+                              Boolean hasSnowed, Boolean hasHailed, Boolean hasThundered, Boolean hasWhirlwinded) {
         this.stationId = stationId;
         this.date = date;
         this.temperature = temperature;
@@ -67,6 +71,67 @@ public class StationWeatherData {
         this.hasHailed = hasHailed;
         this.hasThundered = hasThundered;
         this.hasWhirlwinded = hasWhirlwinded;
+    }
+
+    /**
+     * Checks weather this data point is complete or not. If it isn't, it's
+     * not safe to insert it in a database.
+     *
+     * @return Whether this data point is complete or not
+     */
+    public boolean isComplete() {
+        return temperature != null && dewPoint != null && stationAirPressure != null && seaAirPressure != null &&
+                visibility != null && windSpeed != null && precipitation != null && snowHeight != null &&
+                overcast != null && windDirection != null && hasFrozen != null && hasRained != null &&
+                hasSnowed != null && hasHailed != null && hasThundered != null && hasWhirlwinded != null;
+    }
+
+    /**
+     * Updates the values that are missing (aka null) in `this` with the values in `other`.
+     *
+     * @param other The object to copy values from, if the values from this object are missing
+     */
+    public void updateMissingFrom(StationWeatherData other) {
+        if(this.temperature == null) this.temperature = other.temperature;
+        if(this.dewPoint == null) this.dewPoint = other.dewPoint;
+        if(this.stationAirPressure == null) this.stationAirPressure = other.stationAirPressure;
+        if(this.seaAirPressure == null) this.seaAirPressure = other.seaAirPressure;
+        if(this.visibility == null) this.visibility = other.visibility;
+        if(this.windSpeed == null) this.windSpeed = other.windSpeed;
+        if(this.precipitation == null) this.precipitation = other.precipitation;
+        if(this.snowHeight == null) this.snowHeight = other.snowHeight;
+        if(this.overcast == null) this.overcast = other.overcast;
+        if(this.windDirection == null) this.windDirection = other.windDirection;
+        if(this.hasFrozen == null) this.hasFrozen = other.hasFrozen;
+        if(this.hasRained == null) this.hasRained = other.hasRained;
+        if(this.hasSnowed == null) this.hasSnowed = other.hasSnowed;
+        if(this.hasHailed == null) this.hasHailed = other.hasHailed;
+        if(this.hasThundered == null) this.hasThundered = other.hasThundered;
+        if(this.hasWhirlwinded == null) this.hasWhirlwinded = other.hasWhirlwinded;
+    }
+
+    /**
+     * Updates all values that are not missing from `other` to `this`.
+     *
+     * @param other The object to copy values from
+     */
+    public void updateAllFrom(StationWeatherData other) {
+        if(other.temperature != null) this.temperature = other.temperature;
+        if(other.dewPoint != null) this.dewPoint = other.dewPoint;
+        if(other.stationAirPressure != null) this.stationAirPressure = other.stationAirPressure;
+        if(other.seaAirPressure != null) this.seaAirPressure = other.seaAirPressure;
+        if(other.visibility != null) this.visibility = other.visibility;
+        if(other.windSpeed != null) this.windSpeed = other.windSpeed;
+        if(other.precipitation != null) this.precipitation = other.precipitation;
+        if(other.snowHeight != null) this.snowHeight = other.snowHeight;
+        if(other.overcast != null) this.overcast = other.overcast;
+        if(other.windDirection != null) this.windDirection = other.windDirection;
+        if(other.hasFrozen != null) this.hasFrozen = other.hasFrozen;
+        if(other.hasRained != null) this.hasRained = other.hasRained;
+        if(other.hasSnowed != null) this.hasSnowed = other.hasSnowed;
+        if(other.hasHailed != null) this.hasHailed = other.hasHailed;
+        if(other.hasThundered != null) this.hasThundered = other.hasThundered;
+        if(other.hasWhirlwinded != null) this.hasWhirlwinded = other.hasWhirlwinded;
     }
 
     /**
@@ -99,25 +164,28 @@ public class StationWeatherData {
         int date = (int) dateObj.toInstant().getEpochSecond();
 
         // Parse weather data points
-        float temperature = Float.parseFloat(getNode(measurement, "TEMP", "-1"));
-        float dewPoint = Float.parseFloat(getNode(measurement, "DEWP", "-1"));
-        float stationAirPressure = Float.parseFloat(getNode(measurement, "STP", "-1"));
-        float seaAirPressure = Float.parseFloat(getNode(measurement, "SLP", "-1"));
-        float visibility = Float.parseFloat(getNode(measurement, "VISIB", "-1"));
-        float windSpeed = Float.parseFloat(getNode(measurement, "WDSP", "-1"));
-        float precipitation = Float.parseFloat(getNode(measurement, "PRCP", "-1"));
-        float snowHeight = Float.parseFloat(getNode(measurement, "SNDP", "-1"));
-        float overcast = Float.parseFloat(getNode(measurement, "CLDC", "-1"));
-        short windDirection = Short.parseShort(getNode(measurement, "WNDDIR", "-1"));
+        Float temperature = parseNode(measurement, "TEMP", null, Float::parseFloat);
+        Float dewPoint = parseNode(measurement, "DEWP", null, Float::parseFloat);
+        Float stationAirPressure = parseNode(measurement, "STP", null, Float::parseFloat);
+        Float seaAirPressure = parseNode(measurement, "SLP", null, Float::parseFloat);
+        Float visibility = parseNode(measurement, "VISIB", null, Float::parseFloat);
+        Float windSpeed = parseNode(measurement, "WDSP", null, Float::parseFloat);
+        Float precipitation = parseNode(measurement, "PRCP", null, Float::parseFloat);
+        Float snowHeight = parseNode(measurement, "SNDP", null, Float::parseFloat);
+        Float overcast = parseNode(measurement, "CLDC", null, Float::parseFloat);
+        Short windDirection = parseNode(measurement, "WNDDIR", null, Short::parseShort);
 
         // Parse events
-        String events = getNode(measurement, "FRSHTT", "000000"); // Events
-        boolean hasFrozen      = events.charAt(0) != '0';
-        boolean hasRained      = events.charAt(1) != '0';
-        boolean hasSnowed      = events.charAt(2) != '0';
-        boolean hasHailed      = events.charAt(3) != '0';
-        boolean hasThundered   = events.charAt(4) != '0';
-        boolean hasWhirlwinded = events.charAt(5) != '0';
+        Boolean hasFrozen = null, hasRained = null, hasSnowed = null, hasHailed = null, hasThundered = null, hasWhirlwinded = null;
+        String events = getNode(measurement, "FRSHTT", null);
+        if(events != null && events.length() == 6) {
+            hasFrozen      = events.charAt(0) != '0';
+            hasRained      = events.charAt(1) != '0';
+            hasSnowed      = events.charAt(2) != '0';
+            hasHailed      = events.charAt(3) != '0';
+            hasThundered   = events.charAt(4) != '0';
+            hasWhirlwinded = events.charAt(5) != '0';
+        }
 
         // Return the parsed data
         return new StationWeatherData(stationId, date, temperature, dewPoint, stationAirPressure, seaAirPressure,
@@ -151,9 +219,7 @@ public class StationWeatherData {
                     Element measurement = (Element) measurementList.item(i);
 
                     StationWeatherData entry = parseSingleFromXML(measurement);
-                    if(entry != null) {
-                        result.add(entry);
-                    }
+                    result.add(entry);
                 }catch(Exception e) {
                     System.out.println("Could not parse weather measurement data! " + e.toString());
                     e.printStackTrace();
@@ -181,5 +247,22 @@ public class StationWeatherData {
         }
 
         return textContent;
+    }
+
+    /**
+     * Utility function to parse a certain node from XML data, with the ability to set a default value if the node does not exist.
+     */
+    private static <R> R parseNode(Element element, String name, R def, Function<String, R> parser) {
+        NodeList nodeList = element.getElementsByTagName(name);
+        if(nodeList.getLength() < 1) {
+            return def;
+        }
+
+        String textContent = nodeList.item(0).getTextContent();
+        if(textContent.isEmpty()) {
+            return def;
+        }
+
+        return parser.apply(textContent);
     }
 }
