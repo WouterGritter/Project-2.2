@@ -20,19 +20,19 @@ public class StationWeatherData {
     public final int stationId;
 
     // The time at which this event occurred
-    public final Date date;
+    public final int date;
 
     // ~ Weather data ~
-    public final double temperature; // Temperature in degrees Celsius
-    public final double dewPoint; // Dew point in degrees Celsius
-    public final double stationAirPressure; // Air pressure at station level in millibar
-    public final double seaAirPressure; // Air pressure at sea level in millibar
-    public final double visibility; // Visibility in KM
-    public final double windSpeed; // Wind speed in kilometers per hour
-    public final double precipitation; // Precipitation in centimeters
-    public final double snowHeight; // Show height in centimeters
-    public final double overcast; // Overcast percentage
-    public final int windDirection; // Wind direction in degrees
+    public final float temperature; // Temperature in degrees Celsius
+    public final float dewPoint; // Dew point in degrees Celsius
+    public final float stationAirPressure; // Air pressure at station level in millibar
+    public final float seaAirPressure; // Air pressure at sea level in millibar
+    public final float visibility; // Visibility in KM
+    public final float windSpeed; // Wind speed in kilometers per hour
+    public final float precipitation; // Precipitation in centimeters
+    public final float snowHeight; // Show height in centimeters
+    public final float overcast; // Overcast percentage
+    public final short windDirection; // Wind direction in degrees
 
     // Some flags
     public final boolean hasFrozen;
@@ -45,9 +45,9 @@ public class StationWeatherData {
     /**
      * The constructor, which sets every field in this class.
      */
-    public StationWeatherData(int stationId, Date date, double temperature, double dewPoint, double stationAirPressure,
-                              double seaAirPressure, double visibility, double windSpeed, double precipitation,
-                              double snowHeight, double overcast, int windDirection, boolean hasFrozen, boolean hasRained,
+    public StationWeatherData(int stationId, int date, float temperature, float dewPoint, float stationAirPressure,
+                              float seaAirPressure, float visibility, float windSpeed, float precipitation,
+                              float snowHeight, float overcast, short windDirection, boolean hasFrozen, boolean hasRained,
                               boolean hasSnowed, boolean hasHailed, boolean hasThundered, boolean hasWhirlwinded) {
         this.stationId = stationId;
         this.date = date;
@@ -95,19 +95,20 @@ public class StationWeatherData {
         int second = Integer.parseInt(timeStr.substring(6, 8));
 
         // Put the measurement date in a java Date object
-        Date date = new Date(year - 1900, month - 1, day, hour, minute, second);
+        Date dateObj = new Date(year - 1900, month - 1, day, hour, minute, second);
+        int date = (int) dateObj.toInstant().getEpochSecond();
 
         // Parse weather data points
-        double temperature = Double.parseDouble(getNode(measurement, "TEMP", "-1"));
-        double dewPoint = Double.parseDouble(getNode(measurement, "DEWP", "-1"));
-        double stationAirPressure = Double.parseDouble(getNode(measurement, "STP", "-1"));
-        double seaAirPressure = Double.parseDouble(getNode(measurement, "SLP", "-1"));
-        double visibility = Double.parseDouble(getNode(measurement, "VISIB", "-1"));
-        double windSpeed = Double.parseDouble(getNode(measurement, "WDSP", "-1"));
-        double precipitation = Double.parseDouble(getNode(measurement, "PRCP", "-1"));
-        double snowHeight = Double.parseDouble(getNode(measurement, "SNDP", "-1"));
-        double overcast = Double.parseDouble(getNode(measurement, "CLDC", "-1"));
-        int windDirection = Integer.parseInt(getNode(measurement, "WNDDIR", "-1"));
+        float temperature = Float.parseFloat(getNode(measurement, "TEMP", "-1"));
+        float dewPoint = Float.parseFloat(getNode(measurement, "DEWP", "-1"));
+        float stationAirPressure = Float.parseFloat(getNode(measurement, "STP", "-1"));
+        float seaAirPressure = Float.parseFloat(getNode(measurement, "SLP", "-1"));
+        float visibility = Float.parseFloat(getNode(measurement, "VISIB", "-1"));
+        float windSpeed = Float.parseFloat(getNode(measurement, "WDSP", "-1"));
+        float precipitation = Float.parseFloat(getNode(measurement, "PRCP", "-1"));
+        float snowHeight = Float.parseFloat(getNode(measurement, "SNDP", "-1"));
+        float overcast = Float.parseFloat(getNode(measurement, "CLDC", "-1"));
+        short windDirection = Short.parseShort(getNode(measurement, "WNDDIR", "-1"));
 
         // Parse events
         String events = getNode(measurement, "FRSHTT", "000000"); // Events

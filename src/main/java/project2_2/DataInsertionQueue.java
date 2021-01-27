@@ -219,17 +219,17 @@ public class DataInsertionQueue {
 
                     int offset = i * 18;
                     stmt.setInt    (offset + 1,  data.stationId);
-                    stmt.setInt    (offset + 2,  (int) data.date.toInstant().getEpochSecond());
-                    stmt.setDouble (offset + 3,  data.temperature);
-                    stmt.setDouble (offset + 4,  data.dewPoint);
-                    stmt.setDouble (offset + 5,  data.stationAirPressure);
-                    stmt.setDouble (offset + 6,  data.seaAirPressure);
-                    stmt.setDouble (offset + 7,  data.visibility);
-                    stmt.setDouble (offset + 8,  data.windSpeed);
-                    stmt.setDouble (offset + 9,  data.precipitation);
-                    stmt.setDouble (offset + 10, data.snowHeight);
-                    stmt.setDouble (offset + 11, data.overcast);
-                    stmt.setInt    (offset + 12, data.windDirection);
+                    stmt.setInt    (offset + 2,  data.date);
+                    stmt.setFloat  (offset + 3,  data.temperature);
+                    stmt.setFloat  (offset + 4,  data.dewPoint);
+                    stmt.setFloat  (offset + 5,  data.stationAirPressure);
+                    stmt.setFloat  (offset + 6,  data.seaAirPressure);
+                    stmt.setFloat  (offset + 7,  data.visibility);
+                    stmt.setFloat  (offset + 8,  data.windSpeed);
+                    stmt.setFloat  (offset + 9,  data.precipitation);
+                    stmt.setFloat  (offset + 10, data.snowHeight);
+                    stmt.setFloat  (offset + 11, data.overcast);
+                    stmt.setShort  (offset + 12, data.windDirection);
                     stmt.setBoolean(offset + 13, data.hasFrozen);
                     stmt.setBoolean(offset + 14, data.hasRained);
                     stmt.setBoolean(offset + 15, data.hasSnowed);
