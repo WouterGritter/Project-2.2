@@ -265,7 +265,7 @@ public class DataInsertionQueue {
                     stmt.setFloat  (offset + 9,  data.precipitation);
                     stmt.setFloat  (offset + 10, data.snowHeight);
                     stmt.setFloat  (offset + 11, data.overcast);
-                    stmt.setShort  (offset + 12, data.windDirection);
+                    stmt.setInt    (offset + 12, data.windDirection);
                     stmt.setBoolean(offset + 13, data.hasFrozen);
                     stmt.setBoolean(offset + 14, data.hasRained);
                     stmt.setBoolean(offset + 15, data.hasSnowed);

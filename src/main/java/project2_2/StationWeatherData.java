@@ -23,7 +23,7 @@ public class StationWeatherData {
     public Float precipitation; // Precipitation in centimeters
     public Float snowHeight; // Show height in centimeters
     public Float overcast; // Overcast percentage
-    public Short windDirection; // Wind direction in degrees
+    public Integer windDirection; // Wind direction in degrees
 
     // Some flags
     public Boolean hasFrozen;
@@ -161,7 +161,7 @@ public class StationWeatherData {
                 overcast = Float.parseFloat(value);
                 break;
             case "WNDDIR":
-                windDirection = Short.parseShort(value);
+                windDirection = Integer.parseInt(value);
                 break;
             case "FRSHTT":
                 hasFrozen = value.charAt(0) != '0';
