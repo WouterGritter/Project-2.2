@@ -237,7 +237,9 @@ public class DataInsertionQueue {
             }
 
             try{
-                StringBuilder query = new StringBuilder("INSERT INTO data(station_id,date,temperature,dew_point,station_air_pressure,sea_air_pressure,visibility,wind_speed,precipitation,snow_height,overcast,wind_direction,has_frozen,has_rained,has_snowed,has_hailed,has_thundered,has_whirlwinded)VALUES");
+                StringBuilder query = new StringBuilder(245 + 38 * chunk.size());
+                query.append("INSERT INTO data(station_id,date,temperature,dew_point,station_air_pressure,sea_air_pressure,visibility,wind_speed,precipitation,snow_height,overcast,wind_direction,has_frozen,has_rained,has_snowed,has_hailed,has_thundered,has_whirlwinded)VALUES");
+
                 for(int i = 0; i < chunk.size(); i++) {
                     if(i != 0) {
                         query.append(',');
