@@ -112,10 +112,13 @@ public class StationWeatherData {
 
     /**
      * Updates all values that are not missing from `other` to `this`.
+     * Includes the date!
      *
      * @param other The object to copy values from
      */
     public void updateAllFrom(StationWeatherData other) {
+        this.date = other.date;
+
         if(other.temperature != null) this.temperature = other.temperature;
         if(other.dewPoint != null) this.dewPoint = other.dewPoint;
         if(other.stationAirPressure != null) this.stationAirPressure = other.stationAirPressure;
