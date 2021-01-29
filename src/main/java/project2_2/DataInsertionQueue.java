@@ -102,15 +102,19 @@ public class DataInsertionQueue {
             }
 
             // Add each data point
+            StationWeatherData memData;
             synchronized(latestData) {
-                // Update the missing data with data from the previous data
-                StationWeatherData memData = latestData.get(data.stationId);
-                if(memData == null) {
+                memData = latestData.get(data.stationId);
+            }
+
+            if(memData == null) {
+                synchronized(latestData) {
                     latestData.put(data.stationId, data);
-                }else{
-                    memData.updateAllFrom(data);
-                    memData.isNew = true;
                 }
+            }else{
+                // Update the missing data with data from the previous data
+                memData.updateAllFrom(data);
+                memData.isNew = true;
             }
         }
     }
