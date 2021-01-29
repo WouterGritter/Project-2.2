@@ -86,29 +86,38 @@ public class WeatherServer {
             BufferedReader br = new BufferedReader(new InputStreamReader(in));
 
             // We will keep track of the incoming xml data in this object
-            StringBuilder currentWeatherData = new StringBuilder();
+            StationWeatherData currentMeasurement = new StationWeatherData();
+            boolean inMeasurement = false;
 
             // Loop for as long as the client is connected
             String line;
             while((line = br.readLine()) != null) {
-                // Append this line to the xml string.
-                currentWeatherData.append(line);
-                currentWeatherData.append('\n');
+                try{
+                    line = line.trim();
+                    if(line.equals("<MEASUREMENT>")) {
+                        // The beginning of  a new measurement!
+                        inMeasurement = true;
+                    }else if(line.equals("</MEASUREMENT>")) {
+                        // The end of a measurement!
+                        inMeasurement = false;
 
-                // There is no good way with which we can tell when the client is done sending data..
-                // So instead we look for when the client is done sending the weather data by looking for an xml closing tag.
-                if(line.equals("</WEATHERDATA>")) {
-                    // We've reached the end bois.
-                    String weatherData = currentWeatherData.toString();
-                    currentWeatherData = new StringBuilder();
+                        dataInsertionQueue.onDataReceive(currentMeasurement);
 
-                    // Process the data into an object.
-                    List<StationWeatherData> dataList = StationWeatherData.parseListFromXML(weatherData);
-                    dataInsertionQueue.onDataReceive(dataList);
+                        currentMeasurement = new StationWeatherData();
 
-                    // Update statistics!
-                    statistics.addBulkData();
-                    statistics.addData(dataList.size());
+                        // Update statistics!
+                        statistics.addDataReceived();
+                    }else if(inMeasurement) {
+                        String key = line.substring(1, line.indexOf('>'));
+                        String value = line.substring(key.length() + 2, line.length() - key.length() - 3);
+
+                        if(!value.isEmpty()) {
+                            currentMeasurement.insertData(key, value);
+                        }
+                    }
+                }catch(Exception e) {
+                    System.out.println("Could not parse a data line: " + e.toString());
+                    System.out.println("Line: " + line);
                 }
             }
 

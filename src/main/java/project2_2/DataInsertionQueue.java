@@ -76,46 +76,44 @@ public class DataInsertionQueue {
     /**
      * Should be called when a client received new data.
      *
-     * @param dataList A list of data the client received.
+     * @param data A datapoint which the client received.
      */
-    public void onDataReceive(Collection<StationWeatherData> dataList) {
-        for(StationWeatherData data : dataList) {
-            // Check if we've seen this station ID before
-            boolean newlyAdded;
-            synchronized(seenStationIDs) {
-                newlyAdded = seenStationIDs.add(data.stationId);
-            }
+    public void onDataReceive(StationWeatherData data) {
+        // Check if we've seen this station ID before
+        boolean newlyAdded;
+        synchronized(seenStationIDs) {
+            newlyAdded = seenStationIDs.add(data.stationId);
+        }
 
-            // If we haven't seen this station ID before, add it to the batch list
-            if(newlyAdded) {
-                synchronized(nextStationIDBatch) {
-                    synchronized(stationIDBatches) {
-                        stationIDBatches.get(nextStationIDBatch.get())
-                                .add(data.stationId);
-                    }
+        // If we haven't seen this station ID before, add it to the batch list
+        if(newlyAdded) {
+            synchronized(nextStationIDBatch) {
+                synchronized(stationIDBatches) {
+                    stationIDBatches.get(nextStationIDBatch.get())
+                            .add(data.stationId);
+                }
 
-                    int newValue = nextStationIDBatch.incrementAndGet();
-                    if(newValue >= updateDivision) {
-                        nextStationIDBatch.set(0);
-                    }
+                int newValue = nextStationIDBatch.incrementAndGet();
+                if(newValue >= updateDivision) {
+                    nextStationIDBatch.set(0);
                 }
             }
+        }
 
-            // Add each data point
-            StationWeatherData memData;
+        // Add each data point
+        StationWeatherData memData;
+        synchronized(latestData) {
+            memData = latestData.get(data.stationId);
+        }
+
+        if(memData == null) {
             synchronized(latestData) {
-                memData = latestData.get(data.stationId);
+                latestData.put(data.stationId, data);
             }
-
-            if(memData == null) {
-                synchronized(latestData) {
-                    latestData.put(data.stationId, data);
-                }
-            }else{
-                // Update the missing data with data from the previous data
-                memData.updateAllFrom(data);
-                memData.isNew = true;
-            }
+        }else{
+            // Update the missing data with data from the previous data
+            memData.updateAllFrom(data);
+            memData.isNew = true;
         }
     }
 
@@ -257,7 +255,7 @@ public class DataInsertionQueue {
 
                     int offset = i * 18;
                     stmt.setInt    (offset + 1,  data.stationId);
-                    stmt.setInt    (offset + 2,  data.date);
+                    stmt.setInt    (offset + 2,  data.calculateUnixTime());
                     stmt.setFloat  (offset + 3,  data.temperature);
                     stmt.setFloat  (offset + 4,  data.dewPoint);
                     stmt.setFloat  (offset + 5,  data.stationAirPressure);
