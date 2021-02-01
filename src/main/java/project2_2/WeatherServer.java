@@ -17,6 +17,7 @@ public class WeatherServer {
     private ServerSocket server;
     private RealtimeStatistics statistics;
     private DataInsertionQueue dataInsertionQueue;
+    private AutoDeletion autoDeletion;
 
     /**
      * The WeatherServer constructor.
@@ -40,6 +41,10 @@ public class WeatherServer {
         // Create a DataInsertionQueue object
         dataInsertionQueue = new DataInsertionQueue(properties, statistics);
         dataInsertionQueue.startThreads();
+
+        // Auto-delete old data!
+        autoDeletion = new AutoDeletion(properties, statistics);
+        autoDeletion.startThread();
 
         // Start the server socket!
         int port = Integer.parseInt(properties.getProperty("server_port"));
