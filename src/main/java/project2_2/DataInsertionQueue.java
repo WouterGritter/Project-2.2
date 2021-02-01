@@ -149,32 +149,34 @@ public class DataInsertionQueue {
             dataToSendChunks.add(new ArrayList<>(insertsPerQuery));
             int chunkIndex = 0;
 
-            for(Integer stationId : stationIDBatches.get(updateTimer)) { // stationIDBatches is indexed from 0 to the max value of updateTimer, and contains each station ID
-                StationWeatherData data = latestData.get(stationId);
-                if(data == null || !data.isNew) {
-                    continue;
+            synchronized(stationIDBatches) {
+                for(Integer stationId : stationIDBatches.get(updateTimer)) { // stationIDBatches is indexed from 0 to the max value of updateTimer, and contains each station ID
+                    StationWeatherData data = latestData.get(stationId);
+                    if(data == null || !data.isNew) {
+                        continue;
+                    }
+
+                    // To prevent this data from being sent multiple times, set the isNew flag to false
+                    // Don't remove it! We use it in onDataReceive to fix broken values with previous data
+                    data.isNew = false;
+
+                    // Don't insert the datapoint if the data isn't complete
+                    if(!data.isComplete()) {
+                        continue;
+                    }
+
+                    // This data should be sent right now!
+
+                    List<StationWeatherData> currentChunk = dataToSendChunks.get(chunkIndex);
+                    if(currentChunk.size() >= insertsPerQuery) {
+                        chunkIndex++;
+
+                        currentChunk = new ArrayList<>(insertsPerQuery);
+                        dataToSendChunks.add(currentChunk);
+                    }
+
+                    currentChunk.add(data);
                 }
-
-                // To prevent this data from being sent multiple times, set the isNew flag to false
-                // Don't remove it! We use it in onDataReceive to fix broken values with previous data
-                data.isNew = false;
-
-                // Don't insert the datapoint if the data isn't complete
-                if(!data.isComplete()) {
-                    continue;
-                }
-
-                // This data should be sent right now!
-
-                List<StationWeatherData> currentChunk = dataToSendChunks.get(chunkIndex);
-                if(currentChunk.size() >= insertsPerQuery) {
-                    chunkIndex++;
-
-                    currentChunk = new ArrayList<>(insertsPerQuery);
-                    dataToSendChunks.add(currentChunk);
-                }
-
-                currentChunk.add(data);
             }
 
             // Insert all data that needs to be sent in the insertQueue synchronous queue.
