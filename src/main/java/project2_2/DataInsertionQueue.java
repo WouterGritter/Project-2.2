@@ -130,80 +130,90 @@ public class DataInsertionQueue {
      * Once 10 seconds has elapsed, the thread will have pushed 1% * 100(division) = 100% of the data to the database server.
      */
     private void queueDataThread() {
-        // Keep track of which stage we're at.
-        // This timer will loop from 0 to division-1, back to 0 (etc. etc.)
-        int updateTimer = 0;
+        try{
+            // Keep track of which stage we're at.
+            // This timer will loop from 0 to division-1, back to 0 (etc. etc.)
+            int updateTimer = 0;
 
-        List<List<StationWeatherData>> dataToSendChunks = new ArrayList<>();
+            List<List<StationWeatherData>> dataToSendChunks = new ArrayList<>();
 
-        while(true) {
-            long start = System.currentTimeMillis();
+            while(true) {
+                long start = System.currentTimeMillis();
 
-            // Update the timer
-            updateTimer++;
-            if(updateTimer >= updateDivision) {
-                updateTimer = 0;
-            }
+                // Update the timer
+                updateTimer++;
+                if(updateTimer >= updateDivision) {
+                    updateTimer = 0;
+                }
 
-            // Figure out which data needs to be sent!
-            dataToSendChunks.add(new ArrayList<>(insertsPerQuery));
-            int chunkIndex = 0;
+                // Figure out which data needs to be sent!
+                dataToSendChunks.add(new ArrayList<>(insertsPerQuery));
+                int chunkIndex = 0;
 
-            synchronized(stationIDBatches) {
-                for(Integer stationId : stationIDBatches.get(updateTimer)) { // stationIDBatches is indexed from 0 to the max value of updateTimer, and contains each station ID
-                    StationWeatherData data = latestData.get(stationId);
-                    if(data == null || !data.isNew) {
+                synchronized(stationIDBatches) {
+                    for(Integer stationId : stationIDBatches.get(updateTimer)) { // stationIDBatches is indexed from 0 to the max value of updateTimer, and contains each station ID
+                        StationWeatherData data = latestData.get(stationId);
+                        if(data == null || !data.isNew) {
+                            continue;
+                        }
+
+                        // To prevent this data from being sent multiple times, set the isNew flag to false
+                        // Don't remove it! We use it in onDataReceive to fix broken values with previous data
+                        data.isNew = false;
+
+                        // Don't insert the datapoint if the data isn't complete
+                        if(!data.isComplete()) {
+                            continue;
+                        }
+
+                        // This data should be sent right now!
+
+                        List<StationWeatherData> currentChunk = dataToSendChunks.get(chunkIndex);
+                        if(currentChunk.size() >= insertsPerQuery) {
+                            chunkIndex++;
+
+                            currentChunk = new ArrayList<>(insertsPerQuery);
+                            dataToSendChunks.add(currentChunk);
+                        }
+
+                        currentChunk.add(data);
+                    }
+                }
+
+                // Insert all data that needs to be sent in the insertQueue synchronous queue.
+                // When we do this, the multiple processInsertQueue threads will take care of
+                // pushing the data to the database.
+                for(List<StationWeatherData> chunk : dataToSendChunks) {
+                    if(chunk.isEmpty()) {
                         continue;
                     }
 
-                    // To prevent this data from being sent multiple times, set the isNew flag to false
-                    // Don't remove it! We use it in onDataReceive to fix broken values with previous data
-                    data.isNew = false;
-
-                    // Don't insert the datapoint if the data isn't complete
-                    if(!data.isComplete()) {
-                        continue;
+                    try{
+                        insertQueue.put(chunk);
+                    }catch(InterruptedException e) {
+                        e.printStackTrace();
                     }
-
-                    // This data should be sent right now!
-
-                    List<StationWeatherData> currentChunk = dataToSendChunks.get(chunkIndex);
-                    if(currentChunk.size() >= insertsPerQuery) {
-                        chunkIndex++;
-
-                        currentChunk = new ArrayList<>(insertsPerQuery);
-                        dataToSendChunks.add(currentChunk);
-                    }
-
-                    currentChunk.add(data);
-                }
-            }
-
-            // Insert all data that needs to be sent in the insertQueue synchronous queue.
-            // When we do this, the multiple processInsertQueue threads will take care of
-            // pushing the data to the database.
-            for(List<StationWeatherData> chunk : dataToSendChunks) {
-                if(chunk.isEmpty()) {
-                    continue;
                 }
 
-                try{
-                    insertQueue.put(chunk);
-                }catch(InterruptedException e) {
-                    e.printStackTrace();
+                // Clean-up
+                dataToSendChunks.clear();
+
+                // Sleep for the required time
+                long sleepMs = updateIntervalMs / updateDivision - (System.currentTimeMillis() - start);
+                if(sleepMs > 0) {
+                    try{
+                        Thread.sleep(sleepMs);
+                    }catch(InterruptedException ignored) {}
                 }
             }
+        }catch(Exception e) {
+            e.printStackTrace();
 
-            // Clean-up
-            dataToSendChunks.clear();
-
-            // Sleep for the required time
-            long sleepMs = updateIntervalMs / updateDivision - (System.currentTimeMillis() - start);
-            if(sleepMs > 0) {
-                try{
-                    Thread.sleep(sleepMs);
-                }catch(InterruptedException ignored) {}
-            }
+            // Start again after a timeout!
+            try{
+                Thread.sleep(5000);
+            }catch(InterruptedException ignored) {}
+            queueDataThread();
         }
     }
 
@@ -213,32 +223,25 @@ public class DataInsertionQueue {
      * These threads are responsible for taking data off of the insertQueue synchronous queue, and actually inserting it to the database.
      */
     private void processInsertQueueThread() {
-        // Set up a database connection that we can use in the thread.
-        Connection con;
         try{
-            con = DriverManager.getConnection(properties.getProperty("db_url"));
-        }catch(SQLException e) {
-            e.printStackTrace();
-            System.exit(0);
-            return;
-        }
+            // Set up a database connection that we can use in the thread.
+            Connection con = DriverManager.getConnection(properties.getProperty("db_url"));
 
-        while(true) {
-            List<StationWeatherData> chunk;
-            try{
-                // Take data off of the insertQueue queue.
-                // This method is blocking, so we halt code execution until we actually receive some data.
-                chunk = insertQueue.take();
-            }catch(InterruptedException e) {
-                e.printStackTrace();
-                continue;
-            }
+            while(true) {
+                List<StationWeatherData> chunk;
+                try{
+                    // Take data off of the insertQueue queue.
+                    // This method is blocking, so we halt code execution until we actually receive some data.
+                    chunk = insertQueue.take();
+                }catch(InterruptedException e) {
+                    e.printStackTrace();
+                    continue;
+                }
 
-            if(chunk.isEmpty()) {
-                continue;
-            }
+                if(chunk.isEmpty()) {
+                    continue;
+                }
 
-            try{
                 StringBuilder query = new StringBuilder(245 + 38 * chunk.size());
                 query.append("INSERT INTO data(station_id,date,temperature,dew_point,station_air_pressure,sea_air_pressure,visibility,wind_speed,precipitation,snow_height,overcast,wind_direction,has_frozen,has_rained,has_snowed,has_hailed,has_thundered,has_whirlwinded)VALUES");
 
@@ -284,9 +287,15 @@ public class DataInsertionQueue {
                 // Update statistics!
                 statistics.addSQLQuery();
                 statistics.addInsertions(chunk.size());
-            }catch(SQLException e) {
-                e.printStackTrace();
             }
+        }catch(Exception e) {
+            e.printStackTrace();
+
+            // Start again after a timeout!
+            try{
+                Thread.sleep(5000);
+            }catch(InterruptedException ignored) {}
+            processInsertQueueThread();
         }
     }
 }
