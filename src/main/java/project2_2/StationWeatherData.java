@@ -1,6 +1,7 @@
 package project2_2;
 
-import java.util.Date;
+import java.util.Calendar;
+import java.util.TimeZone;
 
 /**
  * This class represents some data which is sent by a single weather station.
@@ -113,9 +114,12 @@ public class StationWeatherData {
     }
 
     public int calculateUnixTime() {
-        // Put the measurement date in a java Date object
-        Date dateObj = new Date(date_year - 1900, date_month - 1, date_day, time_hour, time_minute, time_second);
-        return (int) dateObj.toInstant().getEpochSecond();
+        // Calculate the unix time.
+        // The stations give us time in UTC!
+        Calendar cal = Calendar.getInstance(TimeZone.getTimeZone("UTC"));
+        cal.set(date_year, date_month - 1, date_day, time_hour, time_minute, time_second);
+
+        return (int) cal.toInstant().getEpochSecond();
     }
 
     public void insertData(String key, String value) {
